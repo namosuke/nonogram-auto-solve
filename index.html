@@ -1,0 +1,182 @@
+<script>
+	class Nonogram {
+		constructor(problemV = [0], problemH = [0]) {
+			this.problem = {
+				v: problemV,
+				h: problemH,
+				size: {
+					v: problemH.length,
+					h: problemV.length,
+				},
+			};
+			this.workspace = {
+				expectation: {
+					v: [],
+					h: [],
+				},
+				progress: Array.from(Array(problemH.length), () => Array(problemV.length).fill('□')),
+			};
+			this.solved = false;
+		}
+
+		// https://tech-blog.s-yoshiki.com/entry/144
+		// 配列numsからk個取り出す組み合わせ
+		combination(nums, k) {
+			let ans = [];
+			if (nums.length < k) {
+				return []
+			}
+			if (k === 1) {
+				for (let i = 0; i < nums.length; i++) {
+					ans[i] = [nums[i]];
+				}
+			} else {
+				for (let i = 0; i < nums.length - k + 1; i++) {
+					let row = this.combination(nums.slice(i + 1), k - 1);
+					for (let j = 0; j < row.length; j++) {
+						ans.push([nums[i]].concat(row[j]));
+					}
+				}
+			}
+			return ans;
+		}
+
+		// https://qiita.com/kznrluk/items/790f1b154d1b6d4de398
+		// 二次元配列を転置する
+		transpose(a) { return a[0].map((_, c) => a.map(r => r[c])) };
+
+		// https://twitter.com/barley_ural/status/1382422288964808704?s=20
+		// 取り得る塗り方の候補を返す
+		generateExpectation(array, length) {
+			const margin = length - array.reduce((sum, element) => sum + element, 0) - (array.length - 1);
+			const combs = this.combination([...Array(array.length + margin).keys()], array.length);
+			const result = Array.from(Array(combs.length), () => Array(array.length + margin).fill('×'));
+			combs.forEach((comb, i) => {
+				for (let j = comb.length - 1; j >= 0; j--) {
+					if (j === comb.length - 1) {
+						result[i].splice(comb[j], 1, ...Array(array[j]).fill('■'));
+					} else {
+						result[i].splice(comb[j], 1, ...Array(array[j]).fill('■').concat(['×']));
+					}
+				}
+			});
+			return result;
+		}
+
+		// 候補の重複部分を返す
+		addChar(array) {
+			return this.transpose(array).map(elm => {
+				if (elm.every(char => char === '■')) {
+					return '■';
+				} else if (elm.every(char => char === '×')) {
+					return '×';
+				} else {
+					return '□';
+				}
+			});
+		}
+
+		// 候補を絞り込む
+		filterExpectation(array, preset) {
+			preset.forEach((char, i) => {
+				if (char !== '□') {
+					array = array.filter(elm => elm[i] === char);
+				}
+			});
+			return array;
+		}
+
+		solve() {
+			if (!this.solved) {
+				this.workspace.expectation.v = this.problem.v.map(elm => {
+					return this.generateExpectation(elm, this.problem.size.v);
+				});
+				this.workspace.expectation.h = this.problem.h.map(elm => {
+					return this.generateExpectation(elm, this.problem.size.h);
+				});
+				let progressed = true;
+				while (progressed) {
+					progressed = false;
+					this.workspace.expectation.v = this.workspace.expectation.v.map((elm, i) => {
+						return this.filterExpectation(elm, this.transpose(this.workspace.progress)[i]);
+					});
+					this.workspace.expectation.v.forEach((elm, i) => {
+						this.addChar(elm).forEach((char, j) => {
+							if (this.workspace.progress[j][i] === '□' && char !== '□') {
+								this.workspace.progress[j][i] = char;
+								progressed = true;
+							}
+						});
+					});
+					this.workspace.expectation.h = this.workspace.expectation.h.map((elm, i) => {
+						return this.filterExpectation(elm, this.workspace.progress[i]);
+					});
+					this.workspace.expectation.h.forEach((elm, i) => {
+						this.addChar(elm).forEach((char, j) => {
+							if (this.workspace.progress[i][j] === '□' && char !== '□') {
+								this.workspace.progress[i][j] = char;
+								progressed = true;
+							}
+						});
+					});
+					this.solved = true;
+				}
+				console.log(this.workspace.progress);
+			}
+			return this.workspace.progress;
+		}
+	}
+
+	const nono = new Nonogram(
+		[
+			[2],
+			[3, 4],
+			[4, 6],
+			[5, 8],
+			[1, 2, 8],
+			[1, 12],
+			[1, 2, 12],
+			[2, 4, 9],
+			[2, 4, 7],
+			[2, 2, 2, 6],
+			[2, 9],
+			[2, 9],
+			[9],
+			[11],
+			[4, 7],
+			[2, 1, 4],
+			[2, 8],
+			[6],
+			[5],
+			[3],
+		],
+		[
+			[10],
+			[4, 4],
+			[3, 2],
+			[3, 2, 1],
+			[2, 4],
+			[4],
+			[2, 1, 1],
+			[1, 1],
+			[3, 4, 2],
+			[5, 8],
+			[7, 4, 2],
+			[13, 4],
+			[13, 4],
+			[19],
+			[19],
+			[17],
+			[14],
+			[2, 2],
+			[2, 2],
+			[2, 2],
+		]
+	);
+
+	nono.solve();
+
+
+
+
+</script>
